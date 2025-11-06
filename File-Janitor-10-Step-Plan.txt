@@ -1,0 +1,132 @@
+🧹 File Janitor – 10-Step Development Plan
+
+A safe, permission-based Electron app for keeping translation folders (Downloads, Desktop, etc.) clean and organized.
+This roadmap prioritizes testing real Windows Task Scheduler integration first, then builds the full cleanup workflow.
+
+1️⃣ Scheduler Test Prototype
+
+Build a minimal Electron app with a single “Schedule Me” button.
+
+Call Windows Task Scheduler (schtasks.exe) via child_process.exec().
+
+Package it with electron-builder.
+
+Verify that the installed .exe can create a real scheduled task for itself.
+
+2️⃣ Scheduler Management UI
+
+Add GUI controls for:
+
+Create Schedule
+
+Run Now
+
+Delete Schedule
+
+View Details
+
+Test each command from the packaged app.
+
+Once this works, your automation layer is ready.
+
+3️⃣ Settings Module
+
+Create a settings panel to:
+
+Select folders to scan
+
+Select quarantine folder
+
+Choose file types to track
+
+Save these preferences in a local settings.json file and confirm persistence between launches.
+
+4️⃣ File-Scanner Engine
+
+Implement Node.js logic to scan selected folders using fs and path.
+
+Filter by:
+
+File extension
+
+Last modified date
+
+Hidden/system file exclusion
+
+Send results to the renderer for display.
+
+5️⃣ Review-First Workflow
+
+Display scan results in the UI.
+
+Prompt users to manually clean files if they prefer.
+
+After manual cleanup, click “Rescan” to refresh and show remaining items.
+
+Ensures users have full control before any automatic action.
+
+6️⃣ Cleanup Actions
+
+Provide buttons for:
+
+✅ Move to Quarantine
+
+❌ Delete Permanently (with confirmation)
+
+⏸ Ignore
+
+Support bulk actions (“Move All”, “Delete All”) with confirmation prompts.
+
+Safely execute operations with fs.rename and fs.unlink.
+
+7️⃣ Quarantine System
+
+Move files to a user-selected quarantine folder with subfolders by file type.
+
+Maintain a small log of moved items.
+
+After N days, prompt daily to review lingering files — never auto-delete.
+
+8️⃣ Optional Undo System
+
+Add a toggle in settings for Undo Log.
+
+When enabled, record file paths for moved/deleted items.
+
+Allow restoring mistakenly moved files.
+
+Keep optional to maintain simplicity.
+
+9️⃣ Dashboard & Reporting
+
+Display:
+
+Scan results
+
+Counts of moved, deleted, and ignored files
+
+Last scan timestamp
+
+Include button to open the quarantine folder.
+
+Clean, text-based interface with no tray notifications.
+
+🔟 Packaging, Testing & Polishing
+
+Package using electron-builder (NSIS).
+
+Test on main and secondary PCs.
+
+Confirm:
+
+Task Scheduler automation works
+
+File cleanup logic runs safely
+
+Refine UI, confirm stable scheduling, and finalize installer.
+
+✅ Summary
+
+Steps 1–2: Confirm Task Scheduler reliability.
+Steps 3–7: Build the cleanup core.
+Steps 8–10: Add polish, logging, and prepare the release-ready installer.

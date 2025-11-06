@@ -1,0 +1,64 @@
+# --- Node / JS common ---
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+package-lock.json
+.pnpm-store/
+.cache/
+.tmp/
+dist/
+build/
+coverage/
+*.log
+
+# --- Env & secrets ---
+.env
+.env.*.local
+*.pem
+*.key
+
+# --- Tools / testing ---
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.eslintcache
+.nyc_output/
+jest/**/*.cache/
+cypress/videos/
+cypress/screenshots/
+
+# --- Electron ---
+*.asar
+out/
+release/
+app/dist/
+electron/dist/
+*.dmg
+*.exe
+*.AppImage
+*.deb
+*.snap
+
+# --- Next.js ---
+.next/
+.vercel/
+.next-static/
+server/chunks/
+
+# --- React Native ---
+android/
+ios/
+.expo/
+*.keystore
+*.jks
+*.p8
+*.mobileprovision
+*.xcworkspace/
+Pods/
+DerivedData/
+
+# --- OS cruft (if you don’t set a global ignore) ---
+.DS_Store
+Thumbs.db
