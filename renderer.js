@@ -24,4 +24,14 @@ document.getElementById("viewBtn").addEventListener("click", async () => {
 	alert(res.ok ? `📄 ${res.message}` : `❌ ${res.message}`);
 });
 
-/* =======================[ END: renderer.js (IPC sender) ]========================= */
+// NEW: Open Settings window
+const settingsBtn = document.getElementById("settingsBtn");
+if (settingsBtn) {
+	settingsBtn.addEventListener("click", async () => {
+		const res = await ipcRenderer.invoke("settings:open");
+		if (!res?.ok) {
+			alert(`❌ Failed to open Settings: ${res?.message || "Unknown error"}`);
+		}
+	});
+}
+/* =======================[ END: renderer.js ]========================= */

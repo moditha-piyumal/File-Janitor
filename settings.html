@@ -1,0 +1,109 @@
+<!-- =======================[ START: settings.html ]======================= -->
+<!doctype html>
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <title>File Janitor — Settings</title>
+    <style>
+        body {
+            font-family: system-ui, Arial, sans-serif;
+            padding: 16px;
+        }
+
+        h1 {
+            margin-top: 0;
+        }
+
+        .row {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .row input[type="text"] {
+            flex: 1;
+            padding: 6px;
+        }
+
+        .help {
+            font-size: 12px;
+            color: #666;
+            margin-top: -6px;
+            margin-bottom: 10px;
+        }
+
+        .actions {
+            margin-top: 16px;
+            display: flex;
+            gap: 8px;
+        }
+
+        .group {
+            border: 1px solid #ddd;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 12px;
+        }
+
+        label {
+            min-width: 120px;
+            display: inline-block;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>Settings</h1>
+
+    <div class="group">
+        <strong>Scan Folders (3 max)</strong>
+        <div class="help">These folders and all their sub-folders will be scanned in Step-4.</div>
+
+        <div class="row">
+            <label>Folder 1</label>
+            <input id="folder1" type="text" placeholder="C:\Users\...\Downloads" />
+            <button id="browse1">Browse…</button>
+        </div>
+        <div class="row">
+            <label>Folder 2</label>
+            <input id="folder2" type="text" placeholder="C:\Users\...\Desktop" />
+            <button id="browse2">Browse…</button>
+        </div>
+        <div class="row">
+            <label>Folder 3</label>
+            <input id="folder3" type="text" placeholder="C:\Users\...\Documents" />
+            <button id="browse3">Browse…</button>
+        </div>
+    </div>
+
+    <div class="group">
+        <strong>Quarantine Folder</strong>
+        <div class="row">
+            <label>Quarantine</label>
+            <input id="quarantine" type="text" placeholder="C:\Users\...\FileJanitor\Quarantine" />
+            <button id="browseQ">Browse…</button>
+        </div>
+        <div class="help">Files you choose to "Move to Quarantine" will go here. (Step-6/7)</div>
+    </div>
+
+    <div class="group">
+        <strong>File Types</strong>
+        <div class="row">
+            <label>Extensions</label>
+            <input id="exts" type="text" placeholder=".pdf,.docx,.jpg" />
+        </div>
+        <div class="help">Comma-separated. Dots are optional; we normalize them (e.g., "pdf" → ".pdf").</div>
+    </div>
+
+    <div class="actions">
+        <button id="saveBtn">Save</button>
+        <button id="reloadBtn">Reload</button>
+    </div>
+
+    <script src="./settings.js"></script>
+</body>
+
+</html>
+<!-- =======================[ END: settings.html ]======================= -->
