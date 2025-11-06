@@ -35,3 +35,22 @@ if (settingsBtn) {
 	});
 }
 /* =======================[ END: renderer.js ]========================= */
+// PREVIEW SCAN (skeleton)
+const scanBtn = document.getElementById("scanBtn");
+if (scanBtn) {
+	scanBtn.addEventListener("click", async () => {
+		const res = await ipcRenderer.invoke("scan:run");
+		if (!res?.ok) {
+			alert(`❌ Scan failed: ${res?.message || "Unknown error"}`);
+			return;
+		}
+		const { foldersScanned, filesMatched, totalSizeBytes, sample } = res.data;
+		const mb = (totalSizeBytes / (1024 * 1024)).toFixed(2);
+		let msg = `✅ Scan completed\n📁 Folders scanned: ${foldersScanned}\n🗂️ Files matched: ${filesMatched}\n💾 Total size: ${mb} MB`;
+		if (sample?.length) {
+			msg +=
+				`\n\nFirst few results:\n- ` + sample.map((s) => s.path).join("\n- ");
+		}
+		alert(msg);
+	});
+}

@@ -227,4 +227,22 @@ ipcMain.handle("dialog:pickDirectory", async () => {
 		path: res.canceled ? null : res.filePaths[0] || null,
 	};
 });
+
+ipcMain.handle("scan:run", async () => {
+	try {
+		// We’ll replace this in Pass 2 with real scanning.
+		return {
+			ok: true,
+			data: {
+				foldersScanned: 0,
+				filesMatched: 0,
+				totalSizeBytes: 0,
+				sample: [],
+			},
+		};
+	} catch (e) {
+		return { ok: false, message: e.message };
+	}
+});
+
 /* ===========================[ END: main.js ]============================= */
