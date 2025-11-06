@@ -228,21 +228,121 @@ ipcMain.handle("dialog:pickDirectory", async () => {
 	};
 });
 
+// -------------------- File Scanner Helpers (Step 4) --------------------
+const os = require("os");
+
+const WINDOWS_SKIP_DIRS = new Set([
+	"$recycle.bin",
+	"system volume information",
+	"windows",
+	"program files",
+	"program files (x86)",
+]);
+
+function isProbablyHidden(name) {
+	if (!name) return false;
+	const n = name.toLowerCase();
+	return n.startsWith(".") || n.startsWith("~$");
+}
+
+function shouldSkipDir(name) {
+	if (!name) return false;
+	const n = name.toLowerCase();
+	return isProbablyHidden(n) || WINDOWS_SKIP_DIRS.has(n);
+}
+
+async function* walkDir(root) {
+	let dirents;
+	try {
+		dirents = await fsp.readdir(root, { withFileTypes: true });
+	} catch {
+		return; // skip unreadable
+	}
+
+	for (const d of dirents) {
+		const full = path.join(root, d.name);
+		if (d.isDirectory()) {
+			if (!shouldSkipDir(d.name)) yield* walkDir(full);
+		} else if (d.isFile()) {
+			yield full;
+		}
+	}
+}
+
+function hasAllowedExtension(filePath, extSet) {
+	const ext = path.extname(filePath).toLowerCase();
+	return extSet.has(ext);
+}
+
+async function getFileStatSafe(p) {
+	try {
+		return await fsp.stat(p);
+	} catch {
+		return null;
+	}
+}
 ipcMain.handle("scan:run", async () => {
 	try {
-		// We’ll replace this in Pass 2 with real scanning.
+		// 1) Load user settings
+		const s = await loadSettings(); // from Step-3
+		const folders = (s.folders || []).filter(Boolean);
+		const extSet = new Set(normalizeExtensions(s.extensions || [])); // robust against strings/arrays
+
+		if (!folders.length) {
+			return {
+				ok: false,
+				message:
+					"No scan folders configured. Open Settings and choose up to 3 folders.",
+			};
+		}
+		if (!extSet.size) {
+			return {
+				ok: false,
+				message:
+					"No file extensions configured. Open Settings and add extensions (e.g., .pdf,.docx).",
+			};
+		}
+
+		// 2) Walk each folder recursively and collect matches
+		let foldersScanned = 0;
+		let filesMatched = 0;
+		let totalSizeBytes = 0;
+
+		const sample = []; // a few paths to show in the alert
+		const SAMPLE_MAX = 10; // keep it small for now; Step-5 will add a full table
+
+		for (const root of folders) {
+			// verify the folder exists
+			let stat = await getFileStatSafe(root);
+			if (!stat || !stat.isDirectory()) continue;
+
+			foldersScanned += 1;
+
+			for await (const filePath of walkDir(root)) {
+				if (!hasAllowedExtension(filePath, extSet)) continue;
+
+				const st = await getFileStatSafe(filePath);
+				if (!st || !st.isFile()) continue;
+
+				filesMatched += 1;
+				totalSizeBytes += st.size;
+
+				if (sample.length < SAMPLE_MAX) {
+					sample.push({
+						path: filePath,
+						size: st.size,
+						modified: st.mtime.toISOString(),
+					});
+				}
+			}
+		}
+
 		return {
 			ok: true,
-			data: {
-				foldersScanned: 0,
-				filesMatched: 0,
-				totalSizeBytes: 0,
-				sample: [],
-			},
+			data: { foldersScanned, filesMatched, totalSizeBytes, sample },
 		};
 	} catch (e) {
 		return { ok: false, message: e.message };
 	}
 });
-
 /* ===========================[ END: main.js ]============================= */
