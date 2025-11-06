@@ -6,11 +6,11 @@ const path = require("path");
 // 1) Create a basic BrowserWindow to show our single-button UI
 function createWindow() {
 	const win = new BrowserWindow({
-		width: 700,
-		height: 450,
+		width: 900, // was 700
+		height: 500, // a little taller
 		webPreferences: {
-			nodeIntegration: true, // OK for tiny prototype; we'll harden later
-			contextIsolation: false, // simplifies IPC for this step
+			nodeIntegration: true,
+			contextIsolation: false,
 		},
 	});
 
