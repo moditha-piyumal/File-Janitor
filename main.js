@@ -14,7 +14,7 @@ function createWindow() {
 		},
 	});
 
-	win.loadFile("index.html");
+	win.loadFile(path.join(__dirname, "index.html"));
 }
 
 // 2) App ready => create window
@@ -72,6 +72,41 @@ ipcMain.handle("scheduler:createSelf", async (_evt, _payload) => {
 		return { ok: false, message: `Failed: ${err.message}` };
 	}
 });
+
+const TASK_NAME = "FileJanitor_AutoRun";
+
+ipcMain.handle("scheduler:runSelf", async () => {
+	return await runCommand(
+		`schtasks /Run /TN "${TASK_NAME}"`,
+		"Task run successfully"
+	);
+});
+
+ipcMain.handle("scheduler:deleteSelf", async () => {
+	return await runCommand(
+		`schtasks /Delete /TN "${TASK_NAME}" /F`,
+		"Task deleted successfully"
+	);
+});
+
+ipcMain.handle("scheduler:viewSelf", async () => {
+	return await runCommand(
+		`schtasks /Query /TN "${TASK_NAME}" /V /FO LIST`,
+		"Task details fetched"
+	);
+});
+
+// Helper: run a command and wrap it in {ok,message}
+async function runCommand(cmd, successMsg) {
+	try {
+		const { stdout, stderr } = await execAsync(cmd);
+		if (stderr && stderr.trim().length > 0)
+			return { ok: false, message: stderr.trim() };
+		return { ok: true, message: `${successMsg}\n${stdout.trim()}` };
+	} catch (err) {
+		return { ok: false, message: err.message };
+	}
+}
 
 // Utility: Promise wrapper for child_process.exec so we can await it
 function execAsync(command) {
