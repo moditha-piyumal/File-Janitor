@@ -48,7 +48,7 @@ const TASK_NAME = "FileJanitor_AutoRun";
 ipcMain.handle("scheduler:createSelf", async () => {
 	try {
 		const targetExe = process.execPath;
-		const START_TIME = "23:00";
+		const START_TIME = "17:00";
 		const cmd = `schtasks /Create /SC DAILY /ST ${START_TIME} /TN "${TASK_NAME}" /TR "${targetExe}" /F`;
 		const { stdout, stderr } = await execAsync(cmd);
 		if (stderr && stderr.trim()) return { ok: false, message: stderr.trim() };
