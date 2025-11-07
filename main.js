@@ -340,8 +340,32 @@ ipcMain.handle("scan:run", async () => {
  * Move a file to the configured quarantine folder.
  * Creates subfolders by extension for organization.
  */
+/* ======================== 🧹 SECTION: Cleanup Actions (Step-6) ======================== */
+
+/** Common system folders to protect */
+const PROTECTED_DIRS = [
+	"c:\\windows",
+	"c:\\program files",
+	"c:\\program files (x86)",
+	"c:\\users\\public",
+];
+
+/** Helper: prevent cleaning files from protected locations */
+function isProtectedPath(filePath) {
+	const lower = filePath.toLowerCase();
+	return PROTECTED_DIRS.some((dir) => lower.startsWith(dir));
+}
+
+/**
+ * Move a file to the configured quarantine folder.
+ * Creates subfolders by extension for organization.
+ */
 ipcMain.handle("cleanup:moveFile", async (_evt, filePath) => {
 	try {
+		if (isProtectedPath(filePath)) {
+			return { ok: false, message: `⚠️ Protected path: ${filePath}` };
+		}
+
 		const settings = await loadSettings();
 		const qFolder = settings.quarantineFolder;
 		if (!qFolder)
@@ -364,11 +388,14 @@ ipcMain.handle("cleanup:moveFile", async (_evt, filePath) => {
 /** Permanently delete a file (asks renderer for confirmation first) */
 ipcMain.handle("cleanup:deleteFile", async (_evt, filePath) => {
 	try {
+		if (isProtectedPath(filePath)) {
+			return { ok: false, message: `⚠️ Protected path: ${filePath}` };
+		}
+
 		await fsp.unlink(filePath);
 		return { ok: true, message: `Deleted: ${filePath}` };
 	} catch (e) {
 		return { ok: false, message: e.message };
 	}
 });
-
 /* ===========================[ END: main.js ]============================= */
