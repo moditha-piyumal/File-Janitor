@@ -85,32 +85,6 @@ document.getElementById("settingsBtn")?.addEventListener("click", async () => {
  * Triggers a recursive folder scan (configured in settings).
  * Displays a compact summary + first 10 sample file paths.
  */
-document.getElementById("scanBtn")?.addEventListener("click", async () => {
-	try {
-		const res = await ipcRenderer.invoke("scan:run");
-		if (!res?.ok) {
-			alert(`❌ Scan failed: ${res?.message || "Unknown error"}`);
-			return;
-		}
-
-		const { foldersScanned, filesMatched, totalSizeBytes, sample } = res.data;
-		const mb = (totalSizeBytes / (1024 * 1024)).toFixed(2);
-
-		let msg =
-			`✅ Scan completed\n` +
-			`📁 Folders scanned: ${foldersScanned}\n` +
-			`🗂️ Files matched: ${filesMatched}\n` +
-			`💾 Total size: ${mb} MB`;
-
-		if (sample?.length) {
-			msg +=
-				`\n\nFirst few results:\n- ` + sample.map((s) => s.path).join("\n- ");
-		}
-		alert(msg);
-	} catch (e) {
-		alert(`❌ Error during scan: ${e.message}`);
-	}
-});
 
 /* ======================= 🪞 SECTION: Review-First Workflow (Step-5) ======================= */
 /*
@@ -210,7 +184,8 @@ async function runScanAndRender() {
 		resultsDiv.innerHTML = `<span style="color:red;">❌ Error: ${e.message}</span>`;
 	}
 }
-
+// Unified Step-5 Scan Handler (matches Rescan behavior)
+document.getElementById("scanBtn")?.addEventListener("click", runScanAndRender);
 /** Re-run the scan when "Rescan" button is clicked */
 rescanBtn?.addEventListener("click", runScanAndRender);
 
