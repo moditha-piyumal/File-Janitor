@@ -191,5 +191,77 @@ rescanBtn?.addEventListener("click", runScanAndRender);
 
 // Optional: auto-run when first loaded (comment out if you prefer manual start)
 // runScanAndRender();
+/* ======================= 🧹 SECTION: Cleanup Actions (Step-6) ======================= */
+
+/** Collect checked file paths from the results table */
+function getSelectedFilePaths() {
+	const checks = document.querySelectorAll("#scanResults .fileCheck:checked");
+	const paths = [];
+	checks.forEach((chk) => {
+		// path is stored in the row's 3rd <td>
+		const row = chk.closest("tr");
+		if (row && row.cells[2]) paths.push(row.cells[2].textContent.trim());
+	});
+	return paths;
+}
+
+/** Confirm and send cleanup action */
+async function handleCleanup(action, targets) {
+	if (!targets.length) {
+		alert("No files selected.");
+		return;
+	}
+	const confirmMsg =
+		action === "move"
+			? `Move ${targets.length} file(s) to Quarantine?`
+			: `Permanently DELETE ${targets.length} file(s)?`;
+	if (!confirm(confirmMsg)) return;
+
+	for (const file of targets) {
+		let res;
+		if (action === "move")
+			res = await ipcRenderer.invoke("cleanup:moveFile", file);
+		else if (action === "delete")
+			res = await ipcRenderer.invoke("cleanup:deleteFile", file);
+
+		console.log(res.message);
+	}
+	alert(
+		`✅ ${action === "move" ? "Moved" : "Deleted"} ${targets.length} file(s).`
+	);
+	await runScanAndRender(); // refresh list
+}
+
+/** Button bindings */
+document.getElementById("moveSelectedBtn")?.addEventListener("click", () => {
+	const targets = getSelectedFilePaths();
+	handleCleanup("move", targets);
+});
+
+document.getElementById("deleteSelectedBtn")?.addEventListener("click", () => {
+	const targets = getSelectedFilePaths();
+	handleCleanup("delete", targets);
+});
+
+document.getElementById("moveAllBtn")?.addEventListener("click", async () => {
+	const all = Array.from(
+		document.querySelectorAll("#scanResults .fileCheck")
+	).map((c) => c.closest("tr").cells[2].textContent.trim());
+	handleCleanup("move", all);
+});
+
+document.getElementById("deleteAllBtn")?.addEventListener("click", async () => {
+	const all = Array.from(
+		document.querySelectorAll("#scanResults .fileCheck")
+	).map((c) => c.closest("tr").cells[2].textContent.trim());
+	handleCleanup("delete", all);
+});
+
+/** Ignore just unchecks them for now (placeholder) */
+document.getElementById("ignoreSelectedBtn")?.addEventListener("click", () => {
+	document
+		.querySelectorAll("#scanResults .fileCheck:checked")
+		.forEach((c) => (c.checked = false));
+});
 
 /* =======================[ END: renderer.js ]========================= */

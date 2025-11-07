@@ -71,6 +71,38 @@
         #rescanBtn:hover {
             background: #005fa3;
         }
+
+        /* Step-6 Buttons */
+        #cleanupActions button {
+            margin-right: 6px;
+            margin-bottom: 6px;
+            padding: 6px 10px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: 500;
+        }
+
+        #moveSelectedBtn,
+        #moveAllBtn {
+            background: #28a745;
+            color: white;
+        }
+
+        #deleteSelectedBtn,
+        #deleteAllBtn {
+            background: #dc3545;
+            color: white;
+        }
+
+        #ignoreSelectedBtn {
+            background: #6c757d;
+            color: white;
+        }
+
+        #cleanupActions button:hover {
+            opacity: 0.9;
+        }
     </style>
     <!-- =======================[ End Table Styling Enhancements ]======================= -->
 
@@ -96,6 +128,16 @@
         <em>No scan results yet. Click “Scan Now” to begin.</em>
     </div>
     <!-- =======================[ End of Review-First Workflow UI ]======================= -->
+    <!-- =======================[ Step 6 – Cleanup Action Buttons ]======================= -->
+    <div id="cleanupActions" style="margin-top:12px;">
+        <h3>Cleanup Actions</h3>
+        <button id="moveSelectedBtn">✅ Move Selected to Quarantine</button>
+        <button id="deleteSelectedBtn">❌ Delete Selected Permanently</button>
+        <button id="ignoreSelectedBtn">⏸ Ignore Selected</button>
+        <button id="moveAllBtn">📦 Move All</button>
+        <button id="deleteAllBtn">🗑️ Delete All</button>
+    </div>
+    <!-- =======================[ End Cleanup Action Buttons ]======================= -->
 
     <!-- New: open the Settings window -->
     <button id="settingsBtn">Open Settings</button>

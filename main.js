@@ -335,4 +335,40 @@ ipcMain.handle("scan:run", async () => {
 		return { ok: false, message: e.message };
 	}
 });
+/* ======================== 🧹 SECTION: Cleanup Actions (Step-6) ======================== */
+/**
+ * Move a file to the configured quarantine folder.
+ * Creates subfolders by extension for organization.
+ */
+ipcMain.handle("cleanup:moveFile", async (_evt, filePath) => {
+	try {
+		const settings = await loadSettings();
+		const qFolder = settings.quarantineFolder;
+		if (!qFolder)
+			return { ok: false, message: "No quarantine folder set in Settings." };
+
+		const ext = path.extname(filePath).toLowerCase() || "_misc";
+		const targetDir = path.join(qFolder, ext.replace(".", ""));
+		await fsp.mkdir(targetDir, { recursive: true });
+
+		const fileName = path.basename(filePath);
+		const dest = path.join(targetDir, fileName);
+
+		await fsp.rename(filePath, dest);
+		return { ok: true, message: `Moved to Quarantine: ${dest}` };
+	} catch (e) {
+		return { ok: false, message: e.message };
+	}
+});
+
+/** Permanently delete a file (asks renderer for confirmation first) */
+ipcMain.handle("cleanup:deleteFile", async (_evt, filePath) => {
+	try {
+		await fsp.unlink(filePath);
+		return { ok: true, message: `Deleted: ${filePath}` };
+	} catch (e) {
+		return { ok: false, message: e.message };
+	}
+});
+
 /* ===========================[ END: main.js ]============================= */
