@@ -229,28 +229,34 @@ ipcMain.handle("scan:run", async () => {
 		let foldersScanned = 0,
 			filesMatched = 0,
 			totalSizeBytes = 0;
-		const sample = [];
+
+		const results = []; // store all matched files
+
 		for (const root of folders) {
 			const stat = await getFileStatSafe(root);
 			if (!stat?.isDirectory()) continue;
 			foldersScanned++;
+
 			for await (const filePath of walkDir(root)) {
 				if (!hasAllowedExtension(filePath, extSet)) continue;
 				const st = await getFileStatSafe(filePath);
 				if (!st?.isFile()) continue;
+
 				filesMatched++;
 				totalSizeBytes += st.size;
-				if (sample.length < 10)
-					sample.push({
-						path: filePath,
-						size: st.size,
-						modified: st.mtime.toISOString(),
-					});
+
+				// ✅ Add every matching file (no 10-limit)
+				results.push({
+					path: filePath,
+					size: st.size,
+					modified: st.mtime.toISOString(),
+				});
 			}
 		}
+
 		return {
 			ok: true,
-			data: { foldersScanned, filesMatched, totalSizeBytes, sample },
+			data: { foldersScanned, filesMatched, totalSizeBytes, sample: results },
 		};
 	} catch (e) {
 		return { ok: false, message: e.message };
