@@ -1,34 +1,31 @@
-/* ===========================[ START: main.js (Scheduler + Settings + Scanner) ]=========================== */
-const { app, BrowserWindow, ipcMain, dialog } = require("electron");
+/* ===========================[ START: main.js (scheduler core + settings) ]=========================== */
+const { app, BrowserWindow, ipcMain, dialog, shell } = require("electron");
 const { exec } = require("child_process");
 const fs = require("fs");
 const fsp = require("fs/promises");
 const path = require("path");
-const os = require("os");
 
-/* ======================== 🧭 SECTION: Window Creation ======================== */
+/* ---------- Window creators ---------- */
 let settingsWin = null;
 
-/** Create the main scheduler window (Step-1 & Step-2) */
 function createWindow() {
 	const win = new BrowserWindow({
-		width: 900,
-		height: 500,
+		width: 1000,
+		height: 600,
 		webPreferences: { nodeIntegration: true, contextIsolation: false },
 	});
 	win.loadFile(path.join(__dirname, "index.html"));
 	return win;
 }
 
-/** Create the Settings window (Step-3) */
 function createSettingsWindow() {
 	if (settingsWin && !settingsWin.isDestroyed()) {
 		settingsWin.focus();
 		return settingsWin;
 	}
 	settingsWin = new BrowserWindow({
-		width: 720,
-		height: 620,
+		width: 860,
+		height: 720,
 		resizable: true,
 		title: "File Janitor — Settings",
 		webPreferences: { nodeIntegration: true, contextIsolation: false },
@@ -38,95 +35,67 @@ function createSettingsWindow() {
 	return settingsWin;
 }
 
-/* ======================== ⚙️ SECTION: App Lifecycle ======================== */
+/* ---------- App lifecycle ---------- */
 app.whenReady().then(createWindow);
 app.on("activate", () => {
 	if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });
 app.on("window-all-closed", () => app.quit());
 
-/* ======================== ⚙️ SECTION: Windows Task Scheduler ======================== */
-// Step-1: Test & manage a real Windows Task Scheduler task for File Janitor.
-
+/* ---------- Scheduler IPC ---------- */
 const TASK_NAME = "FileJanitor_AutoRun";
 
-/** Helper: execute a shell command with Promise interface */
-function execAsync(command) {
-	return new Promise((resolve, reject) => {
-		exec(command, { windowsHide: true }, (error, stdout, stderr) => {
-			if (error) reject(error);
-			else resolve({ stdout, stderr });
-		});
-	});
-}
-
-/** Helper: run schtasks command with unified result format */
-async function runCommand(cmd, successMsg) {
-	try {
-		const { stdout, stderr } = await execAsync(cmd);
-		if (stderr && stderr.trim()) return { ok: false, message: stderr.trim() };
-		return { ok: true, message: `${successMsg}\n${stdout.trim()}` };
-	} catch (err) {
-		return { ok: false, message: err.message };
-	}
-}
-
-/** Create daily 11 PM self-running task */
 ipcMain.handle("scheduler:createSelf", async () => {
 	try {
 		const targetExe = process.execPath;
 		const START_TIME = "23:00";
 		const cmd = `schtasks /Create /SC DAILY /ST ${START_TIME} /TN "${TASK_NAME}" /TR "${targetExe}" /F`;
 		const { stdout, stderr } = await execAsync(cmd);
-		if (stderr && stderr.trim())
-			return { ok: false, message: `schtasks error: ${stderr.trim()}` };
-		return {
-			ok: true,
-			message: `Task "${TASK_NAME}" created.\n${stdout.trim()}`,
-		};
-	} catch (err) {
-		return { ok: false, message: `Failed: ${err.message}` };
+		if (stderr && stderr.trim()) return { ok: false, message: stderr.trim() };
+		return { ok: true, message: `Task created.\n${stdout.trim()}` };
+	} catch (e) {
+		return { ok: false, message: e.message };
 	}
 });
 
-/** Run the scheduled task immediately */
-ipcMain.handle(
-	"scheduler:runSelf",
-	async () =>
-		await runCommand(
-			`schtasks /Run /TN "${TASK_NAME}"`,
-			"Task run successfully"
-		)
+ipcMain.handle("scheduler:runSelf", async () =>
+	runCommand(`schtasks /Run /TN "${TASK_NAME}"`, "Task run successfully")
+);
+ipcMain.handle("scheduler:deleteSelf", async () =>
+	runCommand(
+		`schtasks /Delete /TN "${TASK_NAME}" /F`,
+		"Task deleted successfully"
+	)
+);
+ipcMain.handle("scheduler:viewSelf", async () =>
+	runCommand(
+		`schtasks /Query /TN "${TASK_NAME}" /V /FO LIST`,
+		"Task details fetched"
+	)
 );
 
-/** Delete the scheduled task */
-ipcMain.handle(
-	"scheduler:deleteSelf",
-	async () =>
-		await runCommand(
-			`schtasks /Delete /TN "${TASK_NAME}" /F`,
-			"Task deleted successfully"
-		)
-);
+async function execAsync(cmd) {
+	return new Promise((resolve, reject) => {
+		exec(cmd, { windowsHide: true }, (err, stdout, stderr) =>
+			err ? reject(err) : resolve({ stdout, stderr })
+		);
+	});
+}
+async function runCommand(cmd, msg) {
+	try {
+		const { stdout, stderr } = await execAsync(cmd);
+		if (stderr && stderr.trim()) return { ok: false, message: stderr.trim() };
+		return { ok: true, message: `${msg}\n${stdout.trim()}` };
+	} catch (e) {
+		return { ok: false, message: e.message };
+	}
+}
 
-/** View task details */
-ipcMain.handle(
-	"scheduler:viewSelf",
-	async () =>
-		await runCommand(
-			`schtasks /Query /TN "${TASK_NAME}" /V /FO LIST`,
-			"Task details fetched"
-		)
-);
-
-/* ======================== 🧰 SECTION: Settings System ======================== */
-/** Get path of the local settings.json file */
+/* ---------- Settings persistence ---------- */
 function getSettingsPath() {
 	const dir = app.getPath("userData");
 	return path.join(dir, "settings.json");
 }
-
-/** Default structure of settings */
 function defaultSettings() {
 	return {
 		folders: ["", "", ""],
@@ -134,13 +103,10 @@ function defaultSettings() {
 		extensions: [".pdf", ".docx"],
 	};
 }
-
-/** Normalize and de-duplicate extensions (.pdf vs pdf) */
 function normalizeExtensions(input) {
 	let arr = [];
 	if (typeof input === "string") arr = input.split(",");
 	else if (Array.isArray(input)) arr = input.slice();
-
 	return Array.from(
 		new Set(
 			arr
@@ -150,8 +116,6 @@ function normalizeExtensions(input) {
 		)
 	);
 }
-
-/** Validate and fill defaults */
 function sanitizeSettings(s) {
 	const d = defaultSettings();
 	let folders = Array.isArray(s.folders) ? s.folders.slice(0, 3) : d.folders;
@@ -163,8 +127,6 @@ function sanitizeSettings(s) {
 	const extensions = normalizeExtensions(s.extensions || d.extensions);
 	return { folders, quarantineFolder, extensions };
 }
-
-/** Load settings.json safely */
 async function loadSettings() {
 	const file = getSettingsPath();
 	try {
@@ -174,21 +136,11 @@ async function loadSettings() {
 		return defaultSettings();
 	}
 }
-
-/** Save settings.json safely */
 async function saveSettings(payload) {
-	const safe =
-		payload && typeof payload === "object"
-			? sanitizeSettings(payload)
-			: defaultSettings();
-	const file = getSettingsPath();
-	try {
-		fs.mkdirSync(path.dirname(file), { recursive: true });
-		await fsp.writeFile(file, JSON.stringify(safe, null, 2), "utf8");
-		return safe;
-	} catch (err) {
-		throw new Error(`Cannot save settings: ${err.message}`);
-	}
+	const safe = sanitizeSettings(payload || {});
+	fs.mkdirSync(path.dirname(getSettingsPath()), { recursive: true });
+	await fsp.writeFile(getSettingsPath(), JSON.stringify(safe, null, 2), "utf8");
+	return safe;
 }
 
 /* ---------- Settings IPC ---------- */
@@ -200,26 +152,20 @@ ipcMain.handle("settings:open", async () => {
 		return { ok: false, message: e.message };
 	}
 });
-
 ipcMain.handle("settings:load", async () => {
 	try {
-		const data = await loadSettings();
-		return { ok: true, data };
+		return { ok: true, data: await loadSettings() };
 	} catch (e) {
 		return { ok: false, message: e.message };
 	}
 });
-
-ipcMain.handle("settings:save", async (_evt, payload) => {
+ipcMain.handle("settings:save", async (_e, p) => {
 	try {
-		const saved = await saveSettings(payload);
-		return { ok: true, data: saved };
+		return { ok: true, data: await saveSettings(p) };
 	} catch (e) {
 		return { ok: false, message: e.message };
 	}
 });
-
-/** Directory picker (used by Settings UI) */
 ipcMain.handle("dialog:pickDirectory", async () => {
 	const res = await dialog.showOpenDialog({ properties: ["openDirectory"] });
 	return {
@@ -228,8 +174,7 @@ ipcMain.handle("dialog:pickDirectory", async () => {
 	};
 });
 
-/* ======================== 🔍 SECTION: File Scanner Engine (Step-4) ======================== */
-/** Windows folders to skip entirely */
+/* ---------- File Scanner ---------- */
 const WINDOWS_SKIP_DIRS = new Set([
 	"$recycle.bin",
 	"system volume information",
@@ -237,18 +182,14 @@ const WINDOWS_SKIP_DIRS = new Set([
 	"program files",
 	"program files (x86)",
 ]);
-
 function isProbablyHidden(name) {
 	const n = name?.toLowerCase?.() || "";
 	return n.startsWith(".") || n.startsWith("~$");
 }
-
 function shouldSkipDir(name) {
 	const n = name?.toLowerCase?.() || "";
 	return isProbablyHidden(n) || WINDOWS_SKIP_DIRS.has(n);
 }
-
-/** Async recursive directory walker yielding file paths */
 async function* walkDir(root) {
 	let dirents;
 	try {
@@ -265,8 +206,6 @@ async function* walkDir(root) {
 		}
 	}
 }
-
-/** Safe fs.stat wrapper */
 async function getFileStatSafe(p) {
 	try {
 		return await fsp.stat(p);
@@ -274,51 +213,34 @@ async function getFileStatSafe(p) {
 		return null;
 	}
 }
-
-/** Check if file extension is allowed */
-function hasAllowedExtension(filePath, extSet) {
-	const ext = path.extname(filePath).toLowerCase();
-	return extSet.has(ext);
+function hasAllowedExtension(p, set) {
+	return set.has(path.extname(p).toLowerCase());
 }
-
-/** Run the actual scan */
 ipcMain.handle("scan:run", async () => {
 	try {
 		const s = await loadSettings();
 		const folders = (s.folders || []).filter(Boolean);
 		const extSet = new Set(normalizeExtensions(s.extensions || []));
-
 		if (!folders.length)
-			return {
-				ok: false,
-				message: "No scan folders configured. Open Settings first.",
-			};
+			return { ok: false, message: "No scan folders configured." };
 		if (!extSet.size)
-			return {
-				ok: false,
-				message: "No file extensions configured. Add them in Settings.",
-			};
+			return { ok: false, message: "No extensions configured in Settings." };
 
 		let foldersScanned = 0,
 			filesMatched = 0,
 			totalSizeBytes = 0;
 		const sample = [];
-		const SAMPLE_MAX = 10;
-
 		for (const root of folders) {
 			const stat = await getFileStatSafe(root);
 			if (!stat?.isDirectory()) continue;
 			foldersScanned++;
-
 			for await (const filePath of walkDir(root)) {
 				if (!hasAllowedExtension(filePath, extSet)) continue;
 				const st = await getFileStatSafe(filePath);
 				if (!st?.isFile()) continue;
-
 				filesMatched++;
 				totalSizeBytes += st.size;
-
-				if (sample.length < SAMPLE_MAX)
+				if (sample.length < 10)
 					sample.push({
 						path: filePath,
 						size: st.size,
@@ -326,7 +248,6 @@ ipcMain.handle("scan:run", async () => {
 					});
 			}
 		}
-
 		return {
 			ok: true,
 			data: { foldersScanned, filesMatched, totalSizeBytes, sample },
@@ -335,67 +256,215 @@ ipcMain.handle("scan:run", async () => {
 		return { ok: false, message: e.message };
 	}
 });
-/* ======================== 🧹 SECTION: Cleanup Actions (Step-6) ======================== */
-/**
- * Move a file to the configured quarantine folder.
- * Creates subfolders by extension for organization.
- */
-/* ======================== 🧹 SECTION: Cleanup Actions (Step-6) ======================== */
 
-/** Common system folders to protect */
+/* =====================[ STEP-7.1 — Quarantine logging foundation ]===================== */
+function getQuarantineFolderSyncValue(str) {
+	return (typeof str === "string" ? str.trim() : "") || "";
+}
+async function getQuarantineFolder() {
+	const s = await loadSettings();
+	return getQuarantineFolderSyncValue(s.quarantineFolder);
+}
+function getQuarantineLogPath(q) {
+	return path.join(q, "quarantine_log.json");
+}
+async function safeEnsureDir(d) {
+	try {
+		await fsp.mkdir(d, { recursive: true });
+	} catch {}
+}
+async function readQuarantineLog(f) {
+	try {
+		const raw = await fsp.readFile(f, "utf8");
+		const d = JSON.parse(raw);
+		return Array.isArray(d) ? d : [];
+	} catch {
+		return [];
+	}
+}
+async function writeQuarantineLog(f, d) {
+	try {
+		await fsp.writeFile(f, JSON.stringify(d, null, 2), "utf8");
+	} catch {}
+}
+async function appendQuarantineLog(q, e) {
+	await safeEnsureDir(q);
+	const logFile = getQuarantineLogPath(q);
+	const data = await readQuarantineLog(logFile);
+	data.push(e);
+	await writeQuarantineLog(logFile, data);
+}
+function toExtSubfolder(ext) {
+	return (ext || "").replace(/^\./, "") || "unknown";
+}
+async function safeUniqueTarget(dir, base) {
+	const target = path.join(dir, base);
+	try {
+		await fsp.access(target);
+		const { name, ext } = path.parse(base);
+		const stamp = new Date().toISOString().replace(/[:.]/g, "-");
+		return path.join(dir, `${name}__${stamp}${ext}`);
+	} catch {
+		return target;
+	}
+}
+
+/* ---- Protected path safety ---- */
 const PROTECTED_DIRS = [
 	"c:\\windows",
 	"c:\\program files",
 	"c:\\program files (x86)",
 	"c:\\users\\public",
 ];
-
-/** Helper: prevent cleaning files from protected locations */
 function isProtectedPath(filePath) {
 	const lower = filePath.toLowerCase();
 	return PROTECTED_DIRS.some((dir) => lower.startsWith(dir));
 }
 
-/**
- * Move a file to the configured quarantine folder.
- * Creates subfolders by extension for organization.
- */
-ipcMain.handle("cleanup:moveFile", async (_evt, filePath) => {
-	try {
-		if (isProtectedPath(filePath)) {
-			return { ok: false, message: `⚠️ Protected path: ${filePath}` };
-		}
+/* ---- Core move function ---- */
+async function moveToQuarantineAndLog(srcPath) {
+	const st = await getFileStatSafe(srcPath);
+	if (!st?.isFile()) throw new Error("Source not found or not a file.");
+	if (isProtectedPath(srcPath)) throw new Error("Protected system path.");
 
-		const settings = await loadSettings();
-		const qFolder = settings.quarantineFolder;
+	const qFolder = await getQuarantineFolder();
+	if (!qFolder) throw new Error("Quarantine folder not configured.");
+	await safeEnsureDir(qFolder);
+
+	const ext = path.extname(srcPath).toLowerCase();
+	const destDir = path.join(qFolder, toExtSubfolder(ext));
+	await safeEnsureDir(destDir);
+
+	const destPath = await safeUniqueTarget(destDir, path.basename(srcPath));
+	await fsp.rename(srcPath, destPath);
+
+	await appendQuarantineLog(qFolder, {
+		path: destPath,
+		movedAt: new Date().toISOString(),
+		size: st.size || 0,
+	});
+	return { destPath };
+}
+
+/* ---- Primary + alias IPC handlers ---- */
+ipcMain.handle("cleanup:moveToQuarantine", async (_e, p) => {
+	try {
+		const res = await moveToQuarantineAndLog(p);
+		return { ok: true, message: `Moved to Quarantine: ${res.destPath}` };
+	} catch (e) {
+		return { ok: false, message: e.message };
+	}
+});
+
+// ✅ Backward compatibility for older renderer calls
+ipcMain.handle("cleanup:moveFile", async (_e, p) => {
+	try {
+		const res = await moveToQuarantineAndLog(p);
+		return { ok: true, message: `Moved to Quarantine: ${res.destPath}` };
+	} catch (e) {
+		return { ok: false, message: e.message };
+	}
+});
+
+// ✅ Delete single file safely
+ipcMain.handle("cleanup:deleteFile", async (_e, p) => {
+	try {
+		if (isProtectedPath(p))
+			return { ok: false, message: "Protected system path." };
+		await fsp.unlink(p);
+		return { ok: true, message: `Deleted: ${p}` };
+	} catch (e) {
+		return { ok: false, message: e.message };
+	}
+});
+
+/* =======================[ STEP-7.2 – Quarantine Review Window ]======================= */
+let quarantineWin = null;
+function createQuarantineWindow() {
+	if (quarantineWin && !quarantineWin.isDestroyed())
+		return quarantineWin.focus();
+	quarantineWin = new BrowserWindow({
+		width: 860,
+		height: 700,
+		title: "File Janitor — Quarantine Review",
+		webPreferences: { nodeIntegration: true, contextIsolation: false },
+	});
+	quarantineWin.loadFile(path.join(__dirname, "quarantine.html"));
+	quarantineWin.on("closed", () => (quarantineWin = null));
+	return quarantineWin;
+}
+ipcMain.handle("quarantine:openWindow", async () => {
+	try {
+		createQuarantineWindow();
+		return { ok: true };
+	} catch (e) {
+		return { ok: false, message: e.message };
+	}
+});
+ipcMain.handle("quarantine:scanOld", async () => {
+	try {
+		const qFolder = await getQuarantineFolder();
 		if (!qFolder)
-			return { ok: false, message: "No quarantine folder set in Settings." };
+			return { ok: false, message: "No quarantine folder configured." };
 
-		const ext = path.extname(filePath).toLowerCase() || "_misc";
-		const targetDir = path.join(qFolder, ext.replace(".", ""));
-		await fsp.mkdir(targetDir, { recursive: true });
+		const logFile = getQuarantineLogPath(qFolder);
+		const log = await readQuarantineLog(logFile);
+		const aged = [];
+		const now = Date.now();
+		const THRESHOLD = 30;
 
-		const fileName = path.basename(filePath);
-		const dest = path.join(targetDir, fileName);
-
-		await fsp.rename(filePath, dest);
-		return { ok: true, message: `Moved to Quarantine: ${dest}` };
-	} catch (e) {
-		return { ok: false, message: e.message };
-	}
-});
-
-/** Permanently delete a file (asks renderer for confirmation first) */
-ipcMain.handle("cleanup:deleteFile", async (_evt, filePath) => {
-	try {
-		if (isProtectedPath(filePath)) {
-			return { ok: false, message: `⚠️ Protected path: ${filePath}` };
+		for (const entry of log) {
+			try {
+				const moved = new Date(entry.movedAt);
+				const age = Math.floor((now - moved) / (1000 * 60 * 60 * 24));
+				if (age >= THRESHOLD) {
+					const st = await getFileStatSafe(entry.path);
+					if (!st) continue;
+					aged.push({ ...entry, ageDays: age });
+				}
+			} catch {}
 		}
-
-		await fsp.unlink(filePath);
-		return { ok: true, message: `Deleted: ${filePath}` };
+		return { ok: true, data: aged };
 	} catch (e) {
 		return { ok: false, message: e.message };
 	}
 });
+
+/* =======================[ STEP-7.3 – Quarantine Deletion & Log Update ]======================= */
+ipcMain.handle("quarantine:deleteFiles", async (_e, arr) => {
+	try {
+		if (!Array.isArray(arr) || !arr.length)
+			return { ok: false, message: "No files provided." };
+		const qFolder = await getQuarantineFolder();
+		if (!qFolder)
+			return { ok: false, message: "No quarantine folder configured." };
+		const logFile = getQuarantineLogPath(qFolder);
+		const log = await readQuarantineLog(logFile);
+		let deleted = 0;
+		for (const p of arr) {
+			try {
+				if (isProtectedPath(p)) continue;
+				await fsp.unlink(p);
+				deleted++;
+			} catch {}
+		}
+		const remaining = log.filter((e) => !arr.includes(e.path));
+		await writeQuarantineLog(logFile, remaining);
+		return { ok: true, message: `Deleted ${deleted} file(s).` };
+	} catch (e) {
+		return { ok: false, message: e.message };
+	}
+});
+ipcMain.handle("quarantine:openFolder", async () => {
+	try {
+		const qFolder = await getQuarantineFolder();
+		if (!qFolder)
+			return { ok: false, message: "No quarantine folder configured." };
+		await shell.openPath(qFolder);
+		return { ok: true };
+	} catch (e) {
+		return { ok: false, message: e.message };
+	}
+});
+
 /* ===========================[ END: main.js ]============================= */

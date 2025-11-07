@@ -263,5 +263,17 @@ document.getElementById("ignoreSelectedBtn")?.addEventListener("click", () => {
 		.querySelectorAll("#scanResults .fileCheck:checked")
 		.forEach((c) => (c.checked = false));
 });
+//--------------------------------🧹 End of Step-6 -------------------------------//
+/* =======================[ STEP-7.2 – Quarantine Review Window ]======================= */
+document
+	.getElementById("checkQuarantineBtn")
+	?.addEventListener("click", async () => {
+		try {
+			const res = await ipcRenderer.invoke("quarantine:openWindow");
+			if (!res?.ok) alert(`❌ ${res?.message || "Failed to open window"}`);
+		} catch (e) {
+			alert(`❌ ${e.message}`);
+		}
+	});
 
 /* =======================[ END: renderer.js ]========================= */
