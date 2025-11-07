@@ -36,14 +36,14 @@ document.getElementById("createBtn")?.addEventListener("click", async () => {
 });
 
 /** Run scheduled task manually */
-document.getElementById("runBtn")?.addEventListener("click", async () => {
-	try {
-		const res = await ipcRenderer.invoke("scheduler:runSelf");
-		alert(res.ok ? `▶️ ${res.message}` : `❌ ${res.message}`);
-	} catch (e) {
-		alert(`❌ Error running task: ${e.message}`);
-	}
-});
+// document.getElementById("runBtn")?.addEventListener("click", async () => {
+// 	try {
+// 		const res = await ipcRenderer.invoke("scheduler:runSelf");
+// 		alert(res.ok ? `▶️ ${res.message}` : `❌ ${res.message}`);
+// 	} catch (e) {
+// 		alert(`❌ Error running task: ${e.message}`);
+// 	}
+// });
 
 /** Delete existing scheduled task */
 document.getElementById("deleteBtn")?.addEventListener("click", async () => {

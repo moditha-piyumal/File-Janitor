@@ -58,9 +58,9 @@ ipcMain.handle("scheduler:createSelf", async () => {
 	}
 });
 
-ipcMain.handle("scheduler:runSelf", async () =>
-	runCommand(`schtasks /Run /TN "${TASK_NAME}"`, "Task run successfully")
-);
+// ipcMain.handle("scheduler:runSelf", async () =>
+// 	runCommand(`schtasks /Run /TN "${TASK_NAME}"`, "Task run successfully")
+// );
 ipcMain.handle("scheduler:deleteSelf", async () =>
 	runCommand(
 		`schtasks /Delete /TN "${TASK_NAME}" /F`,
