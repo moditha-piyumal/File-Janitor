@@ -5,6 +5,75 @@
 <head>
     <meta charset="utf-8" />
     <title>File Janitor — Scheduler Manager</title>
+
+    <!-- =======================[ Step 5 - Table Styling Enhancements ]======================= -->
+    <style>
+        /* 🌿 General layout */
+        #scanResults {
+            max-height: 350px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            padding: 8px;
+            border-radius: 6px;
+            font-family: Consolas, monospace;
+            background: #fafafa;
+            margin-top: 10px;
+        }
+
+        /* 🧾 Table styling */
+        #scanResults table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 6px;
+        }
+
+        #scanResults th,
+        #scanResults td {
+            padding: 6px 8px;
+            border-bottom: 1px solid #eee;
+        }
+
+        #scanResults th {
+            background-color: #f2f2f2;
+            font-weight: 600;
+            position: sticky;
+            top: 0;
+            z-index: 1;
+        }
+
+        /* 🩶 Striped rows */
+        #scanResults tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+
+        /* 💡 Hover highlight */
+        #scanResults tr:hover {
+            background-color: #e6f0ff;
+            transition: background 0.2s ease;
+        }
+
+        /* 📦 Compact header */
+        h2 {
+            margin-bottom: 6px;
+        }
+
+        /* 🔁 Rescan button */
+        #rescanBtn {
+            margin-bottom: 6px;
+            background: #0078d7;
+            color: white;
+            border: none;
+            padding: 6px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        #rescanBtn:hover {
+            background: #005fa3;
+        }
+    </style>
+    <!-- =======================[ End Table Styling Enhancements ]======================= -->
+
 </head>
 
 <body>
@@ -17,9 +86,20 @@
 
     <button id="scanBtn">Scan Now (Preview)</button>
     <hr />
+    <!-- =======================[ Step 5 – Review-First Workflow UI ]======================= -->
+    <h2>Scan Results (Preview)</h2>
+    <button id="rescanBtn">🔁 Rescan</button>
+
+    <div id="scanResults" style="max-height: 350px; overflow-y: auto; border: 1px solid #ccc;
+            padding: 8px; border-radius: 6px; font-family: Consolas, monospace;
+            background: #fafafa; margin-top: 10px;">
+        <em>No scan results yet. Click “Scan Now” to begin.</em>
+    </div>
+    <!-- =======================[ End of Review-First Workflow UI ]======================= -->
 
     <!-- New: open the Settings window -->
     <button id="settingsBtn">Open Settings</button>
+
 
 
     <script src="./renderer.js"></script>
