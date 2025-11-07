@@ -34,22 +34,35 @@ function createSettingsWindow() {
 	settingsWin.on("closed", () => (settingsWin = null));
 	return settingsWin;
 }
-
 /* ---------- App lifecycle ---------- */
 app.whenReady().then(createWindow);
 app.on("activate", () => {
 	if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });
 app.on("window-all-closed", () => app.quit());
-
 /* ---------- Scheduler IPC ---------- */
 const TASK_NAME = "FileJanitor_AutoRun";
 
 ipcMain.handle("scheduler:createSelf", async () => {
 	try {
-		const targetExe = process.execPath;
-		const START_TIME = "17:00";
-		const cmd = `schtasks /Create /SC DAILY /ST ${START_TIME} /TN "${TASK_NAME}" /TR "${targetExe}" /F`;
+		const START_TIME = "21:55";
+		const isPackaged = app.isPackaged;
+		const exe = process.execPath;
+		const appDir = __dirname;
+
+		// 📁 packaged → installed EXE
+		// 💻 dev → electron.exe "project_path"
+		const rawTarget = isPackaged ? exe : `${exe} ${appDir}`;
+
+		// Escape quotes for cmd.exe (keeps spaces in "File Janitor.exe")
+		const escaped = `^"${rawTarget.replace(/"/g, '""')}^"`;
+
+		// ✅ No /RL HIGHEST or /IT (avoids Access Denied)
+		// ✅ /F overwrites old task safely
+		const cmd = `schtasks /Create /SC DAILY /ST ${START_TIME} /TN "${TASK_NAME}" /TR ${escaped} /F`;
+
+		console.log("[Scheduler CMD]", cmd); // optional debug
+
 		const { stdout, stderr } = await execAsync(cmd);
 		if (stderr && stderr.trim()) return { ok: false, message: stderr.trim() };
 		return { ok: true, message: `Task created.\n${stdout.trim()}` };

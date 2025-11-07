@@ -1,32 +1,33 @@
 {
-	"name": "file-janitor-prototype",
-	"version": "0.1.0",
+	"name": "file-janitor",
+	"version": "0.1.2",
 	"private": true,
 	"main": "main.js",
 	"scripts": {
 		"start": "electron .",
 		"build:win": "electron-builder --windows nsis"
-	},"devDependencies": {
-  "electron": "^31.0.0",
-  "electron-builder": "^26.0.12",
-  "rimraf": "^6.0.1"
-},
-"build": {
-  "appId": "com.EST.filejanitor",
-  "productName": "File Janitor",
-  "directories": {
-    "output": "release"
-  },
-  "files": [
-    "**/*",
-    "!**/*.map"
-  ],
-  "win": {
-    "target": [
-      "nsis"
-    ],
-    "forceCodeSigning": false,
-    "signAndEditExecutable": false
-  }
-}
+	},
+	"devDependencies": {
+		"electron": "^31.0.0",
+		"electron-builder": "^26.0.12",
+		"rimraf": "^6.0.1"
+	},
+	"build": {
+		"appId": "com.EST.filejanitor",
+		"productName": "File-Janitor",
+		"directories": {
+			"output": "release"
+		},
+		"files": [
+			"**/*",
+			"!**/*.map"
+		],
+		"win": {
+			"target": [
+				"nsis"
+			],
+			"forceCodeSigning": false,
+			"signAndEditExecutable": false
+		}
+	}
 }
