@@ -342,13 +342,28 @@ async function moveToQuarantineAndLog(srcPath) {
 	await safeEnsureDir(destDir);
 
 	const destPath = await safeUniqueTarget(destDir, path.basename(srcPath));
-	await fsp.rename(srcPath, destPath);
 
+	try {
+		// Try normal move first
+		await fsp.rename(srcPath, destPath);
+	} catch (err) {
+		// ⚠️ Handle cross-drive or permission errors
+		if (err.code === "EXDEV" || err.code === "EPERM") {
+			// Rename across drives not allowed → copy + delete
+			await fsp.copyFile(srcPath, destPath);
+			await fsp.unlink(srcPath);
+		} else {
+			throw err;
+		}
+	}
+
+	// Log entry
 	await appendQuarantineLog(qFolder, {
 		path: destPath,
 		movedAt: new Date().toISOString(),
 		size: st.size || 0,
 	});
+
 	return { destPath };
 }
 
