@@ -24,6 +24,8 @@ const { ipcRenderer } = require("electron");
 const path = require("path");
 
 const promptOverlay = document.getElementById("promptOverlay");
+const rescanCountdownPrompt = document.getElementById("rescanCountdownPrompt");
+const rescanCountdownTimer = document.getElementById("rescanCountdownTimer");
 const rescanPrompt = document.getElementById("rescanPrompt");
 const moveAllPrompt = document.getElementById("moveAllPrompt");
 const rescanYesBtn = document.getElementById("rescanYesBtn");
@@ -32,9 +34,11 @@ const moveAllYesBtn = document.getElementById("moveAllYesBtn");
 const moveAllNoBtn = document.getElementById("moveAllNoBtn");
 
 let lastScanResults = null;
+let rescanCountdownInterval = null;
 
 function showPrompt(promptEl) {
 	if (!promptOverlay || !promptEl) return;
+	rescanCountdownPrompt.hidden = promptEl !== rescanCountdownPrompt;
 	rescanPrompt.hidden = promptEl !== rescanPrompt;
 	moveAllPrompt.hidden = promptEl !== moveAllPrompt;
 	promptOverlay.classList.add("active");
@@ -45,6 +49,26 @@ function hidePrompt() {
 	if (!promptOverlay) return;
 	promptOverlay.classList.remove("active");
 	promptOverlay.setAttribute("aria-hidden", "true");
+}
+
+function playSound(fileName) {
+	const audio = new Audio(`./assets/sounds/${fileName}`);
+	audio.play().catch((error) => {
+		console.warn(`Unable to play sound ${fileName}:`, error);
+	});
+}
+
+function formatCountdown(msRemaining) {
+	const totalSeconds = Math.max(0, Math.ceil(msRemaining / 1000));
+	const minutes = Math.floor(totalSeconds / 60);
+	const seconds = totalSeconds % 60;
+	return `${String(minutes).padStart(2, "0")}:${String(seconds).padStart(2, "0")}`;
+}
+
+function updateCountdownDisplay(msRemaining) {
+	if (rescanCountdownTimer) {
+		rescanCountdownTimer.textContent = formatCountdown(msRemaining);
+	}
 }
 
 /* ======================= ⚙️ SECTION: Scheduler Controls ======================= */
@@ -306,8 +330,35 @@ document
 	});
 
 /* =======================[ STEP-8 – Guided Prompts ]======================= */
+const RESCAN_COUNTDOWN_MS = 5 * 60 * 1000;
+
+function startRescanCountdown() {
+	if (rescanCountdownInterval) {
+		clearInterval(rescanCountdownInterval);
+	}
+	showPrompt(rescanCountdownPrompt);
+	playSound("AppOpen.mp3");
+	let remainingMs = RESCAN_COUNTDOWN_MS;
+	updateCountdownDisplay(remainingMs);
+	return new Promise((resolve) => {
+		rescanCountdownInterval = setInterval(() => {
+			remainingMs -= 1000;
+			if (remainingMs <= 0) {
+				clearInterval(rescanCountdownInterval);
+				rescanCountdownInterval = null;
+				updateCountdownDisplay(0);
+				resolve();
+				return;
+			}
+			updateCountdownDisplay(remainingMs);
+		}, 1000);
+	});
+}
+
 async function promptRescanThenMoveAll() {
+	await startRescanCountdown();
 	showPrompt(rescanPrompt);
+	playSound("ScanTime.mp3");
 }
 
 async function handleRescanChoice(shouldRescan) {
@@ -321,6 +372,7 @@ async function handleRescanChoice(shouldRescan) {
 		return;
 	}
 	showPrompt(moveAllPrompt);
+	playSound("MoveFiles.mp3");
 }
 
 async function handleMoveAllChoice(shouldMove) {
@@ -356,9 +408,15 @@ async function maybeStartGuidedFlow() {
 }
 
 rescanYesBtn?.addEventListener("click", () => handleRescanChoice(true));
-rescanNoBtn?.addEventListener("click", () => handleRescanChoice(false));
+rescanNoBtn?.addEventListener("click", () => {
+	playSound("AutoAbort.mp3");
+	handleRescanChoice(false);
+});
 moveAllYesBtn?.addEventListener("click", () => handleMoveAllChoice(true));
-moveAllNoBtn?.addEventListener("click", () => handleMoveAllChoice(false));
+moveAllNoBtn?.addEventListener("click", () => {
+	playSound("AutoAbort.mp3");
+	handleMoveAllChoice(false);
+});
 
 maybeStartGuidedFlow();
 

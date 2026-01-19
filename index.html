@@ -185,6 +185,13 @@
             background: #6c757d;
         }
 
+        .countdown-timer {
+            font-size: 2.4rem;
+            font-weight: 700;
+            letter-spacing: 0.08em;
+            margin: 12px 0 0;
+        }
+
         /* 🩸 Bottom padding for banner */
         footer {
             margin-top: 30px;
@@ -228,6 +235,11 @@
     <button id="settingsBtn">Open Settings</button>
 
     <div id="promptOverlay" aria-hidden="true">
+        <div class="prompt-card" id="rescanCountdownPrompt" hidden>
+            <h2>Next scan starts soon</h2>
+            <p>Please keep the app open while we prepare a fresh scan.</p>
+            <p class="countdown-timer" id="rescanCountdownTimer">05:00</p>
+        </div>
         <div class="prompt-card" id="rescanPrompt">
             <h2>Run a fresh scan now?</h2>
             <p>
