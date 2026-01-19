@@ -45,7 +45,7 @@ const TASK_NAME = "FileJanitor_AutoRun";
 
 ipcMain.handle("scheduler:createSelf", async () => {
 	try {
-		const START_TIME = "21:55";
+		const START_TIME = "20:55";
 		const isPackaged = app.isPackaged;
 		const exe = process.execPath;
 		const appDir = __dirname;
@@ -77,20 +77,20 @@ ipcMain.handle("scheduler:createSelf", async () => {
 ipcMain.handle("scheduler:deleteSelf", async () =>
 	runCommand(
 		`schtasks /Delete /TN "${TASK_NAME}" /F`,
-		"Task deleted successfully"
-	)
+		"Task deleted successfully",
+	),
 );
 ipcMain.handle("scheduler:viewSelf", async () =>
 	runCommand(
 		`schtasks /Query /TN "${TASK_NAME}" /V /FO LIST`,
-		"Task details fetched"
-	)
+		"Task details fetched",
+	),
 );
 
 async function execAsync(cmd) {
 	return new Promise((resolve, reject) => {
 		exec(cmd, { windowsHide: true }, (err, stdout, stderr) =>
-			err ? reject(err) : resolve({ stdout, stderr })
+			err ? reject(err) : resolve({ stdout, stderr }),
 		);
 	});
 }
@@ -125,8 +125,8 @@ function normalizeExtensions(input) {
 			arr
 				.map((x) => String(x).trim().toLowerCase())
 				.filter(Boolean)
-				.map((x) => (x.startsWith(".") ? x : `.${x}`))
-		)
+				.map((x) => (x.startsWith(".") ? x : `.${x}`)),
+		),
 	);
 }
 function sanitizeSettings(s) {
