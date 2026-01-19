@@ -23,6 +23,30 @@
 const { ipcRenderer } = require("electron");
 const path = require("path");
 
+const promptOverlay = document.getElementById("promptOverlay");
+const rescanPrompt = document.getElementById("rescanPrompt");
+const moveAllPrompt = document.getElementById("moveAllPrompt");
+const rescanYesBtn = document.getElementById("rescanYesBtn");
+const rescanNoBtn = document.getElementById("rescanNoBtn");
+const moveAllYesBtn = document.getElementById("moveAllYesBtn");
+const moveAllNoBtn = document.getElementById("moveAllNoBtn");
+
+let lastScanResults = null;
+
+function showPrompt(promptEl) {
+	if (!promptOverlay || !promptEl) return;
+	rescanPrompt.hidden = promptEl !== rescanPrompt;
+	moveAllPrompt.hidden = promptEl !== moveAllPrompt;
+	promptOverlay.classList.add("active");
+	promptOverlay.setAttribute("aria-hidden", "false");
+}
+
+function hidePrompt() {
+	if (!promptOverlay) return;
+	promptOverlay.classList.remove("active");
+	promptOverlay.setAttribute("aria-hidden", "true");
+}
+
 /* ======================= ⚙️ SECTION: Scheduler Controls ======================= */
 
 /** Create scheduled task (11 PM daily) */
@@ -177,11 +201,16 @@ async function runScanAndRender() {
 			resultsDiv.innerHTML = `<span style="color:red;">❌ ${
 				res?.message || "Scan failed."
 			}</span>`;
-			return;
+			lastScanResults = null;
+			return null;
 		}
 		renderScanResults(res.data);
+		lastScanResults = res.data;
+		return res.data;
 	} catch (e) {
 		resultsDiv.innerHTML = `<span style="color:red;">❌ Error: ${e.message}</span>`;
+		lastScanResults = null;
+		return null;
 	}
 }
 // Unified Step-5 Scan Handler (matches Rescan behavior)
@@ -275,5 +304,62 @@ document
 			alert(`❌ ${e.message}`);
 		}
 	});
+
+/* =======================[ STEP-8 – Guided Prompts ]======================= */
+async function promptRescanThenMoveAll() {
+	showPrompt(rescanPrompt);
+}
+
+async function handleRescanChoice(shouldRescan) {
+	if (!shouldRescan) {
+		hidePrompt();
+		return;
+	}
+	const data = await runScanAndRender();
+	if (!data || !data.filesMatched) {
+		hidePrompt();
+		return;
+	}
+	showPrompt(moveAllPrompt);
+}
+
+async function handleMoveAllChoice(shouldMove) {
+	if (!shouldMove) {
+		hidePrompt();
+		return;
+	}
+	const targets = (lastScanResults?.sample || []).map((item) => item.path);
+	if (!targets.length) {
+		hidePrompt();
+		return;
+	}
+	for (const file of targets) {
+		await ipcRenderer.invoke("cleanup:moveFile", file);
+	}
+	await runScanAndRender();
+	hidePrompt();
+}
+
+async function maybeStartGuidedFlow() {
+	try {
+		const res = await ipcRenderer.invoke("settings:load");
+		const folders = res?.ok ? res?.data?.folders || [] : [];
+		const quarantineFolder = res?.ok ? res?.data?.quarantineFolder || "" : "";
+		const hasFolders = folders.some((f) => (f || "").trim().length);
+		const hasQuarantine = quarantineFolder.trim().length > 0;
+		if (hasFolders && hasQuarantine) {
+			await promptRescanThenMoveAll();
+		}
+	} catch {
+		// If settings fail to load, skip guided flow.
+	}
+}
+
+rescanYesBtn?.addEventListener("click", () => handleRescanChoice(true));
+rescanNoBtn?.addEventListener("click", () => handleRescanChoice(false));
+moveAllYesBtn?.addEventListener("click", () => handleMoveAllChoice(true));
+moveAllNoBtn?.addEventListener("click", () => handleMoveAllChoice(false));
+
+maybeStartGuidedFlow();
 
 /* =======================[ END: renderer.js ]========================= */
